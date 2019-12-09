@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 import sys
 
-if __name__ == "__main__":
-	data = list(map(int, sys.stdin.readlines()[0].split(',')))
-
+def execute(data, noun, verb):
 	# Initialize
 	head = 0
 	done = False
 	# replace position 1 with the value 12 and replace position 2 with the value 2.
-	data[1] = 12
-	data[2] = 2
+	data[1] = noun
+	data[2] = verb
 
 	# Execute the program
 	while(not done):
 		op = data[head]
-		print(f'head = {head}, op = {op}')
 		if (op == 99 or op not in {1, 2}): break
 
 		# Parse the opcode
@@ -36,7 +33,14 @@ if __name__ == "__main__":
 		# Next op
 		head += 4
 
-		#debug
-		print(data)
+	return data[0]
 
-	print(data)
+# determine what pair of inputs produces the output 19690720
+if __name__ == "__main__":
+	data = list(map(int, sys.stdin.readlines()[0].split(',')))
+	for noun in range(0,100):
+		for verb in range(0,100):
+			data_copy = data.copy()
+			answer = execute(data_copy, noun, verb)
+			if (answer == 19690720): # this is a magic number
+				print(100 * noun + verb)
