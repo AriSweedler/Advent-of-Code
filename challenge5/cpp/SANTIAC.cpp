@@ -34,6 +34,10 @@ void SANTIAC::step() {
         case 2: op_mult(c.mode[0], c.mode[1]); break;
         case 3: op_read(); break;
         case 4: op_print(c.mode[0]); break;
+        case 5: op_jump_if_true(c.mode[0], c.mode[1]); break;
+        case 6: op_jump_if_false(c.mode[0], c.mode[1]); break;
+        case 7: op_is_less_than(c.mode[0], c.mode[1]); break;
+        case 8: op_is_equal(c.mode[0], c.mode[1]); break;
         case 99:
                 //std::cout << "Program terminated." << std::endl;
                 //std::cout << "m_data[0] = " << m_data[0] << std::endl;
@@ -91,7 +95,7 @@ void SANTIAC::op_read() {
     int arg1 = fetch(PARAMETER_MODE::immediate, 1);
 
     // Execute and write back
-    int readMe = 1;
+    int readMe = 5;
     //std::cout << "Reading in a " << readMe << " and writing it to addr " << arg1 << std::endl;
     m_data[arg1] = readMe;
 
@@ -111,6 +115,75 @@ void SANTIAC::op_print(PARAMETER_MODE m1) {
     // Update instruction pointer
     m_head += 2;
 }
+
+
+// Opcode 5 is jump-if-true: if the first parameter is non-zero, it sets the
+// instruction pointer to the value from the second parameter. Otherwise, it
+// does nothing.
+void SANTIAC::op_jump_if_true(PARAMETER_MODE m1, PARAMETER_MODE m2) {
+    // Fetch
+    int arg1 = fetch(m1, 1);
+    int arg2 = fetch(m2, 2);
+
+    // Execute and write back
+    if (arg1 != 0) {
+        m_head = arg2;
+    } else {
+        // Update instruction pointer
+        m_head += 3;
+    }
+}
+
+// Opcode 6 is jump-if-false: if the first parameter is zero, it sets the
+// instruction pointer to the value from the second parameter. Otherwise, it
+// does nothing.
+void SANTIAC::op_jump_if_false(PARAMETER_MODE m1, PARAMETER_MODE m2) {
+    // Fetch
+    int arg1 = fetch(m1, 1);
+    int arg2 = fetch(m2, 2);
+
+    // Execute and write back
+    if (arg1 == 0) {
+        m_head = arg2;
+    } else {
+        // Update instruction pointer
+        m_head += 3;
+    }
+}
+
+// Opcode 7 is less than: if the first parameter is less than the second
+// parameter, it stores 1 in the position given by the third parameter.
+// Otherwise, it stores 0.
+void SANTIAC::op_is_less_than(PARAMETER_MODE m1, PARAMETER_MODE m2) {
+    // Fetch
+    int arg1 = fetch(m1, 1);
+    int arg2 = fetch(m2, 2);
+    int arg3_addr = fetch(PARAMETER_MODE::immediate, 3);
+
+    // Execute and write back
+    int storeMe = (arg1 < arg2) ? 1 : 0;
+    m_data[arg3_addr] = storeMe;
+
+    // Update instruction pointer
+    m_head += 4;
+}
+
+
+// Opcode 8 is equals: if the first parameter is equal to the second parameter, it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+void SANTIAC::op_is_equal(PARAMETER_MODE m1, PARAMETER_MODE m2) {
+    // Fetch
+    int arg1 = fetch(m1, 1);
+    int arg2 = fetch(m2, 2);
+    int arg3_addr = fetch(PARAMETER_MODE::immediate, 3);
+
+    // Execute and write back
+    int storeMe = (arg1 == arg2) ? 1 : 0;
+    m_data[arg3_addr] = storeMe;
+
+    // Update instruction pointer
+    m_head += 4;
+}
+
 
 int main(int argc, char** argv) {
     SANTIAC myProgram(std::cin);

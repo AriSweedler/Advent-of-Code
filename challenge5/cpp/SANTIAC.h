@@ -20,6 +20,10 @@ public:
     void op_mult(PARAMETER_MODE, PARAMETER_MODE);
     void op_read();
     void op_print(PARAMETER_MODE);
+    void op_jump_if_true(PARAMETER_MODE, PARAMETER_MODE);
+    void op_jump_if_false(PARAMETER_MODE, PARAMETER_MODE);
+    void op_is_less_than(PARAMETER_MODE, PARAMETER_MODE);
+    void op_is_equal(PARAMETER_MODE, PARAMETER_MODE);
 
     struct IntCode {
         IntCode(int input);
