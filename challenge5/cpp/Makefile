@@ -1,12 +1,15 @@
 CC = g++
 CFLAGS = --std=c++17
-OBJECTS = SANTIAC.o
+OBJECTS = SANTIAC.o IntCode.o
 PROG = santiac
 
 .DEFAULT: $(PROG)
 
 $(PROG): $(OBJECTS)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $@
+
+IntCode.o: IntCode.cpp
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 SANTIAC.o: SANTIAC.h SANTIAC.cpp
 	$(CC) $(CFLAGS) -c -o SANTIAC.o SANTIAC.cpp
