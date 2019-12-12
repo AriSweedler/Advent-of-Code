@@ -36,8 +36,8 @@ void SANTIAC::step() {
         case 1: op_add(m1, m2); break;
         case 2: op_mult(m1, m2); break;
         case 99:
-                //std::cout << "Program terminated." << std::endl;
-                //std::cout << "m_data[0] = " << m_data[0] << std::endl;
+                std::cout << "Program terminated." << std::endl;
+                std::cout << "m_data[0] = " << m_data[0] << std::endl;
                 m_status = RUN_MODE::terminated;
                 break;
         default:
@@ -86,17 +86,5 @@ void SANTIAC::op_mult(PARAMETER_MODE m1, PARAMETER_MODE m2) {
 
 int main(int argc, char** argv) {
     SANTIAC myProgram(std::cin);
-
-    for (int i = 0; i < 100; i++) {
-        for (int j = 0; j < 100; j++) {
-            SANTIAC tester = myProgram;
-            tester.execute(i, j);
-            if (tester.get(0) == 19690720) {
-                std::cout << "Noun: " << i << std::endl;
-                std::cout << "Verb: " << j << std::endl;
-            }
-        }
-    }
-
-    return 0;
+    myProgram.execute(12, 2);
 }
