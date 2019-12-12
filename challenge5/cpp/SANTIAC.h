@@ -11,6 +11,7 @@ public:
 
     void execute(int noun, int verb);
     void step();
+    int get(int i) {return m_data[i];}t
 
     void op_add(PARAMETER_MODE, PARAMETER_MODE);
     void op_mult(PARAMETER_MODE, PARAMETER_MODE);

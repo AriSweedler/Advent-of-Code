@@ -30,14 +30,17 @@ void SANTIAC::step() {
     int opcode = m_data[m_head];
 
     // Process opcode and decide what insn to execute
+    // TODO for part 5
     PARAMETER_MODE m1 = PARAMETER_MODE::position;
     PARAMETER_MODE m2 = PARAMETER_MODE::position;
     switch (opcode) {
         case 1: op_add(m1, m2); break;
         case 2: op_mult(m1, m2); break;
+        case 3: op_read(m1); break;
+        case 4: op_write(m1); break;
         case 99:
-                std::cout << "Program terminated." << std::endl;
-                std::cout << "m_data[0] = " << m_data[0] << std::endl;
+                //std::cout << "Program terminated." << std::endl;
+                //std::cout << "m_data[0] = " << m_data[0] << std::endl;
                 m_status = RUN_MODE::terminated;
                 break;
         default:
@@ -86,5 +89,17 @@ void SANTIAC::op_mult(PARAMETER_MODE m1, PARAMETER_MODE m2) {
 
 int main(int argc, char** argv) {
     SANTIAC myProgram(std::cin);
-    myProgram.execute(12, 2);
+
+    for (int i = 0; i < 100; i++) {
+        for (int j = 0; j < 100; j++) {
+            SANTIAC tester = myProgram;
+            tester.execute(i, j);
+            if (tester.get(0) == 19690720) {
+                std::cout << "Noun: " << i << std::endl;
+                std::cout << "Verb: " << j << std::endl;
+            }
+        }
+    }
+
+    return 0;
 }

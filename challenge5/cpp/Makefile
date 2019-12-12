@@ -3,7 +3,7 @@ CFLAGS = --std=c++17
 OBJECTS = SANTIAC.o
 PROG = santiac
 
-.DEFAULT: test1
+.DEFAULT: $(PROG)
 
 $(PROG): $(OBJECTS)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $@
@@ -11,9 +11,9 @@ $(PROG): $(OBJECTS)
 SANTIAC.o: SANTIAC.h SANTIAC.cpp
 	$(CC) $(CFLAGS) -c -o SANTIAC.o SANTIAC.cpp
 
-.PHONY: test1
-test: p1
-	cat ../inputs/input$(T) | ./p1
+.PHONY: test
+test: $(PROG)
+	cat ../inputs/input$(T) | ./$(PROG)
 
 SANTIAC.o: SANTIAC.cpp SANTIAC.h
 
