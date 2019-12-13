@@ -12,6 +12,7 @@ public:
 
     SANTIAC(std::istream& input_stream);
 
+    int amplify(std::string config);
     int execute();
     void step();
 
@@ -31,23 +32,24 @@ public:
         friend std::ostream& operator<<(std::ostream& out, const IntCode& c);
     };
 
-    // I used vim macros to make this list lol
-    void set_thrusters(int input[5]);
-    static int configs[92][5];
+    static std::vector<std::string> all_configs(int depth);
+    static std::vector<std::string> all_configs_recursive(
+            std::vector<std::string>& current, int depth);
 private:
+    struct m_flags_struct {
+        bool debug = false;
+        bool output = false;
+    } m_flags;
+
     int m_head;
     RUN_MODE m_status;
     std::vector<int> m_data;
     std::queue<int> m_input;
+    struct m_io_struct {
+        std::queue<int> readMe;
+        int prev_output;
+    } m_io;
 
-    int thrusters();
     int fetch(PARAMETER_MODE mode, int offset);
     void dump_data();
-
-    struct thrusters {
-        bool ret_settings = false;
-        int phase_settings[5];
-        int phase = 0;
-        int prev_output = 0;
-    } m_thrusters;
 };

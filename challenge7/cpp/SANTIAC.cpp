@@ -7,6 +7,21 @@ SANTIAC::SANTIAC(std::istream& input_stream) {
     }
 }
 
+int SANTIAC::amplify(std::string config) {
+    int next_setting = 0;
+    int out = 0;
+    for (int i = 0; i < config.size(); i++) {
+        SANTIAC tester = *this;
+        next_setting = config.at(i) - '0';
+        tester.m_io.readMe.push(next_setting);
+        tester.m_io.readMe.push(out);
+        tester.execute();
+        out = tester.m_io.prev_output;
+    }
+    return out;
+}
+
+
 int SANTIAC::execute() {
     m_status = RUN_MODE::running;
     m_head = 0;
@@ -15,11 +30,12 @@ int SANTIAC::execute() {
         step();
     }
 
-    return m_thrusters.prev_output;
+    return m_io.prev_output;
 }
 
 void SANTIAC::dump_data() {
     for (int i = 0; i < m_data.size(); i++) {
+        if (m_head == i) std::cout << "!>";
         std::cout << m_data[i] << ",";
     }
     std::cout << std::endl;
@@ -68,8 +84,11 @@ void SANTIAC::op_add(PARAMETER_MODE m1, PARAMETER_MODE m2) {
     int arg3_addr = fetch(PARAMETER_MODE::immediate, 3);
 
     // Execute and write back
-    //std::cout << "Adding " << arg1 << " to " << arg2 << " and storing it in addr " << arg3_addr << std::endl;
     m_data[arg3_addr] = arg1 + arg2;
+    if (m_flags.debug) {
+        std::cout << "Adding " << arg1 << " to " << arg2 << " and storing it in addr " << arg3_addr << std::endl;
+        dump_data();
+    }
 
     // Update instruction pointer
     m_head += 4;
@@ -82,8 +101,11 @@ void SANTIAC::op_mult(PARAMETER_MODE m1, PARAMETER_MODE m2) {
     int arg3_addr = fetch(PARAMETER_MODE::immediate, 3);
 
     // Execute and write back
-    //std::cout << "Multiplying " << arg1 << " to " << arg2 << " and storing it in addr " << arg3_addr << std::endl;
     m_data[arg3_addr] = arg1 * arg2;
+    if (m_flags.debug) {
+        std::cout << "Multiplying " << arg1 << " to " << arg2 << " and storing it in addr " << arg3_addr << std::endl;
+        dump_data();
+    }
 
     // Update instruction pointer
     m_head += 4;
@@ -99,10 +121,13 @@ void SANTIAC::op_read() {
     int arg1 = fetch(PARAMETER_MODE::immediate, 1);
 
     // Execute and write back
-    int readMe = thrusters();
-    std::cout << "Read a " << readMe << " into addr " << arg1 << std::endl;
-    //std::cout << "Reading in a " << readMe << " and writing it to addr " << arg1 << std::endl;
+    int readMe = m_io.readMe.front();
+    m_io.readMe.pop();
     m_data[arg1] = readMe;
+    if (m_flags.debug) {
+        std::cout << "Reading in a " << readMe << " and writing it to addr " << arg1 << std::endl;
+        dump_data();
+    }
 
     // Update instruction pointer
     m_head += 2;
@@ -114,9 +139,12 @@ void SANTIAC::op_print(PARAMETER_MODE m1) {
 
     // Execute and write back
     int writeMe = arg1;
-    //std::cout << "From addr " << arg1 << " we issue Print" << std::endl;
-    std::cout << "System printed " << writeMe << std::endl;
-    m_thrusters.prev_output = writeMe;
+    if (m_flags.output) std::cout << "System printed " << writeMe << std::endl;
+    m_io.prev_output = writeMe;
+    if (m_flags.debug) {
+        std::cout << "From addr " << arg1 << " we issue Print" << std::endl;
+        dump_data();
+    }
 
     // Update instruction pointer
     m_head += 2;
@@ -188,142 +216,55 @@ void SANTIAC::op_is_equal(PARAMETER_MODE m1, PARAMETER_MODE m2) {
     m_head += 4;
 }
 
-// At its first input instruction, provide it the amplifier's phase setting
-// At its second input instruction, provide it the input signal, 0.
-int SANTIAC::thrusters() {
-    if (m_thrusters.ret_settings) {
-        m_thrusters.ret_settings = true;
-        return m_thrusters.phase_settings[m_thrusters.phase++];
-    } else {
-        m_thrusters.ret_settings = false;
-        return m_thrusters.prev_output;
-    }
+std::vector<std::string> SANTIAC::all_configs(int depth) {
+    std::vector<std::string> answer;
+    answer.push_back("");
+    return all_configs_recursive(answer, depth - 1);
 }
 
-void SANTIAC::set_thrusters(int input[5]) {
-    for (int j = 0; j < 5; j++) {
-        m_thrusters.phase_settings[j] = input[j];
+std::vector<std::string> SANTIAC::all_configs_recursive(
+        std::vector<std::string>& current, int depth) {
+    if (depth < 0) return current;
+    std::vector<std::string> answer;
+    std::string depth_str = std::to_string(depth);
+
+    // "kern" is the space between letters in a font. If we have "01" and we
+    // wish to insert "2", then we have 3 places to place the "2":
+    // * "012"
+    // * "021"
+    // * "201"
+    // ==> kern == 3
+    int kern = current[0].size() + 1;
+    for (int i = 0; i < kern; i++) {
+        // For each kern column that we place our digit in, we must duplicate
+        // the whole current vector
+        for (auto str : current) {
+            answer.push_back(str.insert(i, depth_str));
+        }
     }
+
+    return all_configs_recursive(answer, depth-1);
 }
 
 int main(int argc, char** argv) {
     SANTIAC myProgram(std::cin);
 
     int max = -1;
-    int answer[5];
-    int num_configs = sizeof(SANTIAC::configs)/sizeof(SANTIAC::configs[0]);
-    for (int i = 0; i < num_configs; i++) {
+    std::string answer;
+    std::vector<std::string> configs = SANTIAC::all_configs(5);
+    for (auto config : configs) {
         SANTIAC tester = myProgram;
-        tester.set_thrusters(SANTIAC::configs[i]);
-        int result = tester.execute();
-        std::cout << "SANTIAC::configs[i] = " << SANTIAC::configs[i] << std::endl;
-        std::cout << "result = " << result << std::endl;
+        int result = tester.amplify(config);
+        //std::cout << "config = " << config << std::endl;
+        //std::cout << "result = " << result << std::endl;
         if (result > max) {
             max = result;
-            for (int j = 0; j < 5; i++) {
-                answer[j] = SANTIAC::configs[i][j];
-                std::cout << "answer[j] = " << answer[j] << std::endl;
-            }
+            answer = config;
         }
     }
 
     std::cout << "max = " << max << std::endl;
-    for (int i = 0; i < 5; i++) {
-        std::cout << "answer[" << i << "] = " << answer[i] << std::endl;
-    }
+    std::cout << "answer = " << answer << std::endl;
 
     return 0;
 }
-
-int SANTIAC::configs[92][5] = {
-    {4, 3, 2, 1, 0},
-    {4, 3, 2, 0, 1},
-    {4, 3, 1, 2, 0},
-    {4, 3, 0, 2, 1},
-    {4, 3, 1, 0, 2},
-    {4, 0, 3, 1, 2},
-    {4, 2, 3, 1, 0},
-    {4, 2, 3, 0, 1},
-    {4, 1, 3, 2, 0},
-    {4, 0, 2, 3, 1},
-    {4, 1, 0, 3, 2},
-    {4, 0, 1, 3, 2},
-    {4, 2, 1, 3, 0},
-    {4, 2, 0, 3, 1},
-    {4, 1, 2, 0, 3},
-    {4, 0, 2, 1, 3},
-    {4, 1, 0, 2, 3},
-    {4, 0, 1, 2, 3},
-    {3, 4, 2, 1, 0},
-    {3, 4, 2, 0, 1},
-    {3, 4, 1, 2, 0},
-    {3, 4, 0, 2, 1},
-    {3, 4, 1, 0, 2},
-    {0, 4, 3, 1, 2},
-    {2, 4, 3, 1, 0},
-    {2, 4, 3, 0, 1},
-    {1, 4, 3, 2, 0},
-    {0, 4, 2, 3, 1},
-    {1, 4, 0, 3, 2},
-    {0, 4, 1, 3, 2},
-    {2, 4, 1, 3, 0},
-    {2, 4, 0, 3, 1},
-    {1, 4, 2, 0, 3},
-    {0, 4, 2, 1, 3},
-    {1, 4, 0, 2, 3},
-    {0, 4, 1, 2, 3},
-    {3, 2, 4, 1, 0},
-    {3, 2, 4, 0, 1},
-    {3, 1, 4, 2, 0},
-    {3, 0, 4, 2, 1},
-    {3, 1, 4, 0, 2},
-    {0, 3, 4, 1, 2},
-    {2, 3, 4, 1, 0},
-    {2, 3, 4, 0, 1},
-    {1, 3, 4, 2, 0},
-    {0, 2, 4, 3, 1},
-    {1, 0, 4, 3, 2},
-    {0, 1, 4, 3, 2},
-    {2, 1, 4, 3, 0},
-    {2, 0, 4, 3, 1},
-    {1, 2, 4, 0, 3},
-    {0, 2, 4, 1, 3},
-    {1, 0, 4, 2, 3},
-    {0, 1, 4, 2, 3},
-    {3, 2, 1, 4, 0},
-    {3, 2, 0, 4, 1},
-    {3, 1, 2, 4, 0},
-    {3, 0, 2, 4, 1},
-    {3, 1, 0, 4, 2},
-    {0, 3, 1, 4, 2},
-    {2, 3, 1, 4, 0},
-    {2, 3, 0, 4, 1},
-    {1, 3, 2, 4, 0},
-    {0, 2, 3, 4, 1},
-    {1, 0, 3, 4, 2},
-    {0, 1, 3, 4, 2},
-    {2, 1, 3, 4, 0},
-    {2, 0, 3, 4, 1},
-    {1, 2, 0, 4, 3},
-    {0, 2, 1, 4, 3},
-    {1, 0, 2, 4, 3},
-    {0, 1, 2, 4, 3},
-    {3, 2, 1, 0, 4},
-    {3, 2, 0, 1, 4},
-    {3, 1, 2, 0, 4},
-    {3, 0, 2, 1, 4},
-    {3, 1, 0, 2, 4},
-    {0, 3, 1, 2, 4},
-    {2, 3, 1, 0, 4},
-    {2, 3, 0, 1, 4},
-    {1, 3, 2, 0, 4},
-    {0, 2, 3, 1, 4},
-    {1, 0, 3, 2, 4},
-    {0, 1, 3, 2, 4},
-    {2, 1, 3, 0, 4},
-    {2, 0, 3, 1, 4},
-    {1, 2, 0, 3, 4},
-    {0, 2, 1, 3, 4},
-    {1, 0, 2, 3, 4},
-    {0, 1, 2, 3, 4}
-};
