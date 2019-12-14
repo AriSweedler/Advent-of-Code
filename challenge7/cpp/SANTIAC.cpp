@@ -13,20 +13,31 @@ int SANTIAC::amplify(std::string config) {
     SANTIAC amp[5] = {*this, *this, *this, *this, *this};
     for (int i = 0; i < config.size(); i++) {
         amp[i].m_config.value = config.at(i) - '0';
+        amp[i].m_next_amp = &amp[(i+1)%5];
     }
 
     // push '0' to the read queue of amp A to get things started
     amp[0].m_io.readMe.push(0);
 
     // Execute
-    amp[0].execute();
-    out = amp[0].m_io.prev_output;
+    int terminated = 0;
+    for (int i = 0; terminated < 5; i = (i+1)%5) {
+        if (amp[i].m_status == RUN_MODE::terminated) continue;
+        amp[i].execute();
+        if (amp[i].m_status == RUN_MODE::terminated) terminated++;
+    }
+
+    out = amp[4].m_io.prev_output;
     return out;
 }
 
 int SANTIAC::execute() {
+    if (m_flags.debug) {
+        std::cout << "(" << m_config.value << "): ";
+        std::cout << "Executing amp with config of " << m_config.value << std::endl;
+    }
+    if (m_status == RUN_MODE::unstarted) m_head = 0;
     m_status = RUN_MODE::running;
-    m_head = 0;
 
     while (m_status == RUN_MODE::running) {
         step();
@@ -134,8 +145,19 @@ void SANTIAC::op_read() {
     } else if (!m_io.readMe.empty()) {
         readMe = m_io.readMe.front();
         m_io.readMe.pop();
+        if (m_flags.debug) {
+            std::cout << "Reading in data: " << readMe << std::endl;
+        }
     } else {
-        std::cout << "Waiting on a read..." << std::endl;
+        if (m_flags.output) {
+            std::cout << "(" << m_config.value << "): ";
+            std::cout << "Waiting on a read..." << std::endl;
+        }
+        if (m_flags.debug) {
+            dump_data();
+        }
+        m_status = RUN_MODE::paused;
+        return;
     }
 
     m_data[arg1] = readMe;
@@ -156,6 +178,7 @@ void SANTIAC::op_print(PARAMETER_MODE m1) {
     int writeMe = arg1;
     if (m_flags.output) std::cout << "System printed " << writeMe << std::endl;
     m_io.prev_output = writeMe;
+    m_next_amp->m_io.readMe.push(writeMe);
     if (m_flags.debug) {
         std::cout << "From addr " << arg1 << " we issue Print" << std::endl;
         dump_data();
@@ -255,7 +278,7 @@ std::vector<std::string> SANTIAC::all_configs(int depth) {
 
 std::vector<std::string> SANTIAC::all_configs_recursive(
         std::vector<std::string>& current, int depth) {
-    if (depth < 0) return current;
+    if (depth < 5) return current;
     std::vector<std::string> answer;
     std::string depth_str = std::to_string(depth);
 
@@ -282,14 +305,10 @@ int main(int argc, char** argv) {
 
     int max = -1;
     std::string answer;
-    std::vector<std::string> configs = SANTIAC::all_configs(5);
+    std::vector<std::string> configs = SANTIAC::all_configs(10);
     for (auto config : configs) {
-        std::cout << "config = " << config << std::endl;
         SANTIAC tester = myProgram;
         int result = tester.amplify(config);
-        std::cout << "config = " << config << " done, exiting" << std::endl;
-        exit(1);
-        std::cout << "result = " << result << std::endl;
         if (result > max) {
             max = result;
             answer = config;

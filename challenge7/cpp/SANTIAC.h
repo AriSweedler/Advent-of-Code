@@ -8,7 +8,7 @@
 class SANTIAC {
 public:
     enum class PARAMETER_MODE {position, immediate};
-    enum class RUN_MODE {running, terminated};
+    enum class RUN_MODE {unstarted, running, paused, terminated};
 
     SANTIAC(std::istream& input_stream);
 
@@ -37,23 +37,23 @@ public:
             std::vector<std::string>& current, int depth);
 private:
     struct m_flags_struct {
-        bool debug = true;
-        bool output = true;
+        bool debug = false;
+        bool output = false;
     } m_flags;
-
     struct m_config_struct {
         int value;
         bool unread = true;
     } m_config;
-
-    int m_head;
-    RUN_MODE m_status;
-    std::vector<int> m_data;
-    std::queue<int> m_input;
     struct m_io_struct {
         std::queue<int> readMe;
         int prev_output;
     } m_io;
+    int m_head;
+    RUN_MODE m_status = RUN_MODE::unstarted;
+    std::vector<int> m_data;
+    std::queue<int> m_input;
+
+    SANTIAC* m_next_amp;
 
     int fetch(PARAMETER_MODE mode, int offset);
     void dump_data();
