@@ -10,17 +10,19 @@ SANTIAC::SANTIAC(std::istream& input_stream) {
 int SANTIAC::amplify(std::string config) {
     int next_setting = 0;
     int out = 0;
+    SANTIAC amp[5] = {*this, *this, *this, *this, *this};
     for (int i = 0; i < config.size(); i++) {
-        SANTIAC tester = *this;
-        next_setting = config.at(i) - '0';
-        tester.m_io.readMe.push(next_setting);
-        tester.m_io.readMe.push(out);
-        tester.execute();
-        out = tester.m_io.prev_output;
+        amp[i].m_config.value = config.at(i) - '0';
     }
+
+    // push '0' to the read queue of amp A to get things started
+    amp[0].m_io.readMe.push(0);
+
+    // Execute
+    amp[0].execute();
+    out = amp[0].m_io.prev_output;
     return out;
 }
-
 
 int SANTIAC::execute() {
     m_status = RUN_MODE::running;
@@ -39,6 +41,7 @@ void SANTIAC::dump_data() {
         std::cout << m_data[i] << ",";
     }
     std::cout << std::endl;
+    if (m_flags.debug) std::cout << std::endl;
 }
 
 void SANTIAC::step() {
@@ -121,8 +124,20 @@ void SANTIAC::op_read() {
     int arg1 = fetch(PARAMETER_MODE::immediate, 1);
 
     // Execute and write back
-    int readMe = m_io.readMe.front();
-    m_io.readMe.pop();
+    int readMe = 0;
+    if (m_config.unread) {
+        if (m_flags.debug) {
+            std::cout << "Reading in config: " << m_config.value << std::endl;
+        }
+        readMe = m_config.value;
+        m_config.unread = false;
+    } else if (!m_io.readMe.empty()) {
+        readMe = m_io.readMe.front();
+        m_io.readMe.pop();
+    } else {
+        std::cout << "Waiting on a read..." << std::endl;
+    }
+
     m_data[arg1] = readMe;
     if (m_flags.debug) {
         std::cout << "Reading in a " << readMe << " and writing it to addr " << arg1 << std::endl;
@@ -159,6 +174,10 @@ void SANTIAC::op_jump_if_true(PARAMETER_MODE m1, PARAMETER_MODE m2) {
     int arg2 = fetch(m2, 2);
 
     // Execute and write back
+    if (m_flags.debug) {
+        std::cout << "Arg1 is " << arg1 << " so we " << ((arg1 != 0)?("do"):("don't")) << " jump to arg2: " << arg2 << std::endl;
+        dump_data();
+    }
     if (arg1 != 0) {
         m_head = arg2;
     } else {
@@ -176,6 +195,10 @@ void SANTIAC::op_jump_if_false(PARAMETER_MODE m1, PARAMETER_MODE m2) {
     int arg2 = fetch(m2, 2);
 
     // Execute and write back
+    if (m_flags.debug) {
+        std::cout << "Arg1 is " << arg1 << " so we " << ((arg1 == 0)?("do"):("don't")) << " jump to arg2: " << arg2 << std::endl;
+        dump_data();
+    }
     if (arg1 == 0) {
         m_head = arg2;
     } else {
@@ -195,6 +218,10 @@ void SANTIAC::op_is_less_than(PARAMETER_MODE m1, PARAMETER_MODE m2) {
 
     // Execute and write back
     int storeMe = (arg1 < arg2) ? 1 : 0;
+    if (m_flags.debug) {
+        std::cout << "(<) Arg1 is " << arg1 << ", Arg2 is " << arg2 << " so we write " << storeMe << " to addr " << arg3_addr << std::endl;
+        dump_data();
+    }
     m_data[arg3_addr] = storeMe;
 
     // Update instruction pointer
@@ -210,6 +237,10 @@ void SANTIAC::op_is_equal(PARAMETER_MODE m1, PARAMETER_MODE m2) {
 
     // Execute and write back
     int storeMe = (arg1 == arg2) ? 1 : 0;
+    if (m_flags.debug) {
+        std::cout << "(==) Arg1 is " << arg1 << ", Arg2 is " << arg2 << " so we write " << storeMe << " to addr " << arg3_addr << std::endl;
+        dump_data();
+    }
     m_data[arg3_addr] = storeMe;
 
     // Update instruction pointer
@@ -253,10 +284,12 @@ int main(int argc, char** argv) {
     std::string answer;
     std::vector<std::string> configs = SANTIAC::all_configs(5);
     for (auto config : configs) {
+        std::cout << "config = " << config << std::endl;
         SANTIAC tester = myProgram;
         int result = tester.amplify(config);
-        //std::cout << "config = " << config << std::endl;
-        //std::cout << "result = " << result << std::endl;
+        std::cout << "config = " << config << " done, exiting" << std::endl;
+        exit(1);
+        std::cout << "result = " << result << std::endl;
         if (result > max) {
             max = result;
             answer = config;

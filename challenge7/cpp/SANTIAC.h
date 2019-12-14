@@ -37,9 +37,14 @@ public:
             std::vector<std::string>& current, int depth);
 private:
     struct m_flags_struct {
-        bool debug = false;
-        bool output = false;
+        bool debug = true;
+        bool output = true;
     } m_flags;
+
+    struct m_config_struct {
+        int value;
+        bool unread = true;
+    } m_config;
 
     int m_head;
     RUN_MODE m_status;
