@@ -2,15 +2,17 @@
 
 SANTIAC::SANTIAC(std::istream& input_stream) {
     for (std::string int_str; std::getline(input_stream, int_str, ',');) {
-        int num = stoi(int_str);
+        long num = stol(int_str);
         m_data.push_back(num);
     }
     while (m_data.size() < 30000) m_data.push_back(0);
     m_head = 0;
     m_base = 0;
+
+    m_io.readMe.push(2);
 }
 
-int SANTIAC::execute() {
+long SANTIAC::execute() {
     if (m_status == RUN_MODE::unstarted) m_head = 0;
     m_status = RUN_MODE::running;
 
@@ -22,7 +24,8 @@ int SANTIAC::execute() {
 }
 
 void SANTIAC::dump_data() {
-    for (int i = 0; i < 60; i++) {
+    if (!m_flags.debug_dump) return;
+    for (long i = 0; i < 900; i++) {
         if (m_head == i) std::cout << "!>";
         std::cout << m_data[i] << ",";
     }
@@ -32,16 +35,19 @@ void SANTIAC::dump_data() {
 
 void SANTIAC::step() {
     IntCode c(m_data[m_head]);
+    if (m_flags.debug) {
+        std::cout << "\n" << "[" << m_head << "]: Recv'd IntCode " << c << std::endl;
+    }
 
     switch (c.operation) {
-        case 1: op_add(c.mode[0], c.mode[1]); break;
-        case 2: op_mult(c.mode[0], c.mode[1]); break;
-        case 3: op_read(); break;
+        case 1: op_add(c.mode[0], c.mode[1], c.mode[2]); break;
+        case 2: op_mult(c.mode[0], c.mode[1], c.mode[2]); break;
+        case 3: op_read(c.mode[0]); break;
         case 4: op_print(c.mode[0]); break;
         case 5: op_jump_if_true(c.mode[0], c.mode[1]); break;
         case 6: op_jump_if_false(c.mode[0], c.mode[1]); break;
-        case 7: op_is_less_than(c.mode[0], c.mode[1]); break;
-        case 8: op_is_equal(c.mode[0], c.mode[1]); break;
+        case 7: op_is_less_than(c.mode[0], c.mode[1], c.mode[2]); break;
+        case 8: op_is_equal(c.mode[0], c.mode[1], c.mode[2]); break;
         case 9: op_adjust_relative_base(c.mode[0]); break;
         case 99:
                 //std::cout << "Program terminated." << std::endl;
@@ -57,23 +63,43 @@ void SANTIAC::step() {
 
 }
 
-int SANTIAC::fetch(PARAMETER_MODE mode, int parameter_number) {
-    int addr;
-    int parameter = m_data[m_head + parameter_number];
+long SANTIAC::fetch_read(PARAMETER_MODE mode, long parameter_number) {
+    long addr;
+    long parameter = m_data[m_head + parameter_number];
+    if (m_flags.debug_fetch) std::cout << "Parameter is ";
     if (mode == PARAMETER_MODE::immediate) {
+        if (m_flags.debug_fetch) std::cout << "immediate " << parameter << " = " << parameter << std::endl;
         return parameter;
     } else if (mode == PARAMETER_MODE::relative) {
+        if (m_flags.debug_fetch) std::cout << "relative " << parameter << " ( + " << m_base << ") = position " << m_base + parameter << " = " << m_data[m_base + parameter] << std::endl;
         return m_data[m_base + parameter];
     } else {
+        if (m_flags.debug_fetch) std::cout << "position " << parameter << " = " << m_data[parameter] << std::endl;
         return m_data[parameter];
     }
 }
 
-void SANTIAC::op_add(PARAMETER_MODE m1, PARAMETER_MODE m2) {
+long SANTIAC::fetch_write(PARAMETER_MODE mode, long parameter_number) {
+    long addr;
+    long parameter = m_data[m_head + parameter_number];
+    if (m_flags.debug_fetch) std::cout << "Parameter is ";
+    if (mode == PARAMETER_MODE::immediate) {
+        if (m_flags.debug_fetch) std::cout << "immediate write. ERROR" << std::endl;
+        return -1;
+    } else if (mode == PARAMETER_MODE::relative) {
+        if (m_flags.debug_fetch) std::cout << "relative addr " << parameter << " ( + " << m_base << ") = addr " << m_base + parameter << std::endl;
+        return m_base + parameter;
+    } else {
+        if (m_flags.debug_fetch) std::cout << "position address " << parameter << " = addr " << parameter << std::endl;
+        return parameter;
+    }
+}
+
+void SANTIAC::op_add(PARAMETER_MODE m1, PARAMETER_MODE m2, PARAMETER_MODE m3) {
     // Fetch
-    int arg1 = fetch(m1, 1);
-    int arg2 = fetch(m2, 2);
-    int arg3_addr = fetch(PARAMETER_MODE::immediate, 3);
+    long arg1 = fetch_read(m1, 1);
+    long arg2 = fetch_read(m2, 2);
+    long arg3_addr = fetch_write(m3, 3);
 
     // Execute and write back
     m_data[arg3_addr] = arg1 + arg2;
@@ -86,16 +112,17 @@ void SANTIAC::op_add(PARAMETER_MODE m1, PARAMETER_MODE m2) {
     m_head += 4;
 }
 
-void SANTIAC::op_mult(PARAMETER_MODE m1, PARAMETER_MODE m2) {
+void SANTIAC::op_mult(PARAMETER_MODE m1, PARAMETER_MODE m2, PARAMETER_MODE m3) {
     // Fetch
-    int arg1 = fetch(m1, 1);
-    int arg2 = fetch(m2, 2);
-    int arg3_addr = fetch(PARAMETER_MODE::immediate, 3);
+    long arg1 = fetch_read(m1, 1);
+    long arg2 = fetch_read(m2, 2);
+    long arg3_addr = fetch_write(m3, 3);
 
     // Execute and write back
     m_data[arg3_addr] = arg1 * arg2;
     if (m_flags.debug) {
         std::cout << "Multiplying " << arg1 << " to " << arg2 << " and storing it in addr " << arg3_addr << std::endl;
+        std::cout << "We got " << arg1 * arg2 << std::endl;
         dump_data();
     }
 
@@ -108,12 +135,12 @@ void SANTIAC::op_mult(PARAMETER_MODE m1, PARAMETER_MODE m2) {
 // setting, 3. At its second input instruction, provide it the input signal, 0.
 // After some calculations, it will use an output instruction to indicate the
 // amplifier's output signal.
-void SANTIAC::op_read() {
+void SANTIAC::op_read(PARAMETER_MODE m1) {
     // Fetch
-    int arg1 = fetch(PARAMETER_MODE::immediate, 1);
+    long arg1 = fetch_read(m1, 1);
 
     // Execute and write back
-    int readMe = 0;
+    long readMe = 0;
     if (m_config.unread) {
         if (m_flags.debug) {
             std::cout << "Reading in config: " << m_config.value << std::endl;
@@ -138,10 +165,19 @@ void SANTIAC::op_read() {
         return;
     }
 
-    m_data[arg1] = readMe;
-    if (m_flags.debug) {
-        std::cout << "Reading in a " << readMe << " and writing it to addr " << arg1 << std::endl;
-        dump_data();
+    if (m1 == SANTIAC::PARAMETER_MODE::relative) {
+        int addr = m_data[m_head + 1] + m_base;
+        m_data[addr] = readMe;
+        if (m_flags.debug) {
+            std::cout << "Rel Reading in a " << readMe << " and writing it to addr " << addr << std::endl;
+            dump_data();
+        }
+    } else {
+        m_data[arg1] = readMe;
+        if (m_flags.debug) {
+            std::cout << "Reading in a " << readMe << " and writing it to addr " << arg1 << std::endl;
+            dump_data();
+        }
     }
 
     // Update instruction pointer
@@ -150,10 +186,10 @@ void SANTIAC::op_read() {
 
 void SANTIAC::op_print(PARAMETER_MODE m1) {
     // Fetch
-    int arg1 = fetch(m1, 1);
+    long arg1 = fetch_read(m1, 1);
 
     // Execute and write back
-    int writeMe = arg1;
+    long writeMe = arg1;
     if (m_flags.output) std::cout << "System printed " << writeMe << std::endl;
     m_io.prev_output = writeMe;
     if (m_flags.debug) {
@@ -170,8 +206,8 @@ void SANTIAC::op_print(PARAMETER_MODE m1) {
 // does nothing.
 void SANTIAC::op_jump_if_true(PARAMETER_MODE m1, PARAMETER_MODE m2) {
     // Fetch
-    int arg1 = fetch(m1, 1);
-    int arg2 = fetch(m2, 2);
+    long arg1 = fetch_read(m1, 1);
+    long arg2 = fetch_read(m2, 2);
 
     // Execute and write back
     if (m_flags.debug) {
@@ -191,8 +227,8 @@ void SANTIAC::op_jump_if_true(PARAMETER_MODE m1, PARAMETER_MODE m2) {
 // does nothing.
 void SANTIAC::op_jump_if_false(PARAMETER_MODE m1, PARAMETER_MODE m2) {
     // Fetch
-    int arg1 = fetch(m1, 1);
-    int arg2 = fetch(m2, 2);
+    long arg1 = fetch_read(m1, 1);
+    long arg2 = fetch_read(m2, 2);
 
     // Execute and write back
     if (m_flags.debug) {
@@ -210,14 +246,14 @@ void SANTIAC::op_jump_if_false(PARAMETER_MODE m1, PARAMETER_MODE m2) {
 // Opcode 7 is less than: if the first parameter is less than the second
 // parameter, it stores 1 in the position given by the third parameter.
 // Otherwise, it stores 0.
-void SANTIAC::op_is_less_than(PARAMETER_MODE m1, PARAMETER_MODE m2) {
+void SANTIAC::op_is_less_than(PARAMETER_MODE m1, PARAMETER_MODE m2, PARAMETER_MODE m3) {
     // Fetch
-    int arg1 = fetch(m1, 1);
-    int arg2 = fetch(m2, 2);
-    int arg3_addr = fetch(PARAMETER_MODE::immediate, 3);
+    long arg1 = fetch_read(m1, 1);
+    long arg2 = fetch_read(m2, 2);
+    long arg3_addr = fetch_write(m3, 3);
 
     // Execute and write back
-    int storeMe = (arg1 < arg2) ? 1 : 0;
+    long storeMe = (arg1 < arg2) ? 1 : 0;
     if (m_flags.debug) {
         std::cout << "(<) Arg1 is " << arg1 << ", Arg2 is " << arg2 << " so we write " << storeMe << " to addr " << arg3_addr << std::endl;
         dump_data();
@@ -231,14 +267,14 @@ void SANTIAC::op_is_less_than(PARAMETER_MODE m1, PARAMETER_MODE m2) {
 // Opcode 8 is equals: if the first parameter is equal to the second parameter,
 // it stores 1 in the position given by the third parameter. Otherwise, it
 // stores 0.
-void SANTIAC::op_is_equal(PARAMETER_MODE m1, PARAMETER_MODE m2) {
+void SANTIAC::op_is_equal(PARAMETER_MODE m1, PARAMETER_MODE m2, PARAMETER_MODE m3) {
     // Fetch
-    int arg1 = fetch(m1, 1);
-    int arg2 = fetch(m2, 2);
-    int arg3_addr = fetch(PARAMETER_MODE::immediate, 3);
+    long arg1 = fetch_read(m1, 1);
+    long arg2 = fetch_read(m2, 2);
+    long arg3_addr = fetch_write(m3, 3);
 
     // Execute and write back
-    int storeMe = (arg1 == arg2) ? 1 : 0;
+    long storeMe = (arg1 == arg2) ? 1 : 0;
     if (m_flags.debug) {
         std::cout << "(==) Arg1 is " << arg1 << ", Arg2 is " << arg2 << " so we write " << storeMe << " to addr " << arg3_addr << std::endl;
         dump_data();
@@ -254,7 +290,7 @@ void SANTIAC::op_is_equal(PARAMETER_MODE m1, PARAMETER_MODE m2) {
 // of the parameter.
 void SANTIAC::op_adjust_relative_base(PARAMETER_MODE m1) {
     // Fetch
-    int arg1 = fetch(m1, 1);
+    long arg1 = fetch_read(m1, 1);
 
     // Execute and write back
     if (m_flags.debug) {
@@ -267,14 +303,14 @@ void SANTIAC::op_adjust_relative_base(PARAMETER_MODE m1) {
     m_head += 2;
 }
 
-std::vector<std::string> SANTIAC::all_configs(int depth) {
+std::vector<std::string> SANTIAC::all_configs(long depth) {
     std::vector<std::string> answer;
     answer.push_back("");
     return all_configs_recursive(answer, depth - 1);
 }
 
 std::vector<std::string> SANTIAC::all_configs_recursive(
-        std::vector<std::string>& current, int depth) {
+        std::vector<std::string>& current, long depth) {
     if (depth < 5) return current;
     std::vector<std::string> answer;
     std::string depth_str = std::to_string(depth);
@@ -285,8 +321,8 @@ std::vector<std::string> SANTIAC::all_configs_recursive(
     // * "021"
     // * "201"
     // ==> kern == 3
-    int kern = current[0].size() + 1;
-    for (int i = 0; i < kern; i++) {
+    long kern = current[0].size() + 1;
+    for (long i = 0; i < kern; i++) {
         // For each kern column that we place our digit in, we must duplicate
         // the whole current vector
         for (auto str : current) {

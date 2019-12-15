@@ -9,7 +9,7 @@ std::ostream& operator<<(std::ostream& out, const SANTIAC::IntCode& c) {
     return out;
 }
 
-int SANTIAC::IntCode::decode(const SANTIAC::PARAMETER_MODE mode) {
+long SANTIAC::IntCode::decode(const SANTIAC::PARAMETER_MODE mode) {
     switch(mode) {
         case SANTIAC::PARAMETER_MODE::position : return 0;
         case SANTIAC::PARAMETER_MODE::immediate: return 1;
@@ -18,9 +18,9 @@ int SANTIAC::IntCode::decode(const SANTIAC::PARAMETER_MODE mode) {
     }
 }
 
-SANTIAC::IntCode::IntCode(int input) {
-    int gate = 10000;
-    for (int i = 2; i >= 0; i--) {
+SANTIAC::IntCode::IntCode(long input) {
+    long gate = 10000;
+    for (long i = 2; i >= 0; i--) {
         if (input >= 2*gate) {
             input -= 2*gate;
             mode[i] = SANTIAC::PARAMETER_MODE::relative;
