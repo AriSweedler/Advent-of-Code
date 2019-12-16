@@ -1,0 +1,65 @@
+So the challenge this time is pretty cool. I guess what less can be expected
+from this!!
+
+So the first thing that I think of is:
+For each asteroid create a map:
+  Add each asteroid into a map - (record the distance as a reduced fraction)
+Return the asteroid with the largest map.
+
+If 2 asteroids will block each other, (1,2) and (2,4), then reducing their
+fraction will cause them to use the same key and thus overwrite each other.
+
+Note on edge cases:
+If 2 asteroids are co-linear but they are on opposite sides of the viewing
+asteroid, then we can add a 'spin' to the asteroids. "Spin up" or "Spin down",
+with everything from [(-1,0) to (1,0)) (positive sin including (-1,0)) having
+spin up and ((-1, 0) to (1,0)] (negative sin including (1,0)) having spin down.
+
+Languages possible:
+  * python (easy)
+  * OCaml (omg how 2 make data structures)
+  * JavaScript (this would just be to make it harder on myself)
+  * C++/C (doesn't seem very fun lol it'd be like python but just more annoying
+  to write)
+  * lisp (omg i have to learn)
+  * Go/Rust (omg i have to learn)
+  * Vimscript (LOL) (LOL)
+
+Alignment chart for choosing which language:
+
+       |  lawful  |  neutral  |  chaotic  |
+_______+__________+___________+___________+
+good   |  Python  |   Ruby    |   C/C++   |
+_______+__________+___________+___________+
+neutral|JavaScript|   Rust?   |    Go?    |
+_______+__________+___________+___________+
+evil   |   lisp   |   OCaml   | Vimscript |
+
+Ok I'm going to try it in Vimscript. lmao if anyone's reading this, Fuck you
+ahahaha go fuck yourself.
+
+So the thing here is that I'll try each char, and if it's a '#' then I'll go
+off. Going off means I'll try each char, and if it's a '#' then I'll mash the
+position. Mashing the position means I'll get the difference, reduce it to a
+fraction (with spin), and add it to a set. At the end of going off I'll record
+the new max set size, then start again.
+
+Alright let's formalize the plan and not be such a wuss about it:
+* Initialize 'max' = 0;
+* Look at each char. If it's a '#':
+  * Record the position 'origin'
+  * Initialize set 'asteroids' = {}
+  * Look at each char. If it's a '#':
+    * Record the position 'stroid'
+    * Get the difference between 'origin' and 'stroid'
+    * Check to see if it should be in the set:
+      * This can be done efficiently. This can be implemented by creating a
+      canonical form for a vector from 'origin' to 'stroid'
+      * This can be done medium. This can be implemented by - for every
+      asteroid, seeing if there exists an asteroid in the places between
+      'origin' and 'stroid' and not counting those
+      * This can be done medium. Make a copy of the field for each asteroid, and
+      when you record a 'stroid' remove all the ones it blocks.
+  * Return the size of the set
+* Return the biggest set
+* Pray that part II isn't going to be too hard lol
