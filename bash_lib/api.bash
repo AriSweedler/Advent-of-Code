@@ -1,17 +1,17 @@
 function command::gh() {
-  open "https://github.com/AriSweedler/aoc/${YEAR}"
+  open "https://github.com/AriSweedler/aoc/${AOC_YEAR}"
 }
 
 function api() {
   # Required (and interesting) args
-  if [ -z "${SESSION:-}" ]; then
-    log::warn "Make sure you place your SESSION in the '.env' file"
+  if [ -z "${AOC_SESSION:-}" ]; then
+    log::warn "Make sure you place your AOC_SESSION in the '.env' file"
     log::warn ".env path = '${REPO_ROOT}/.env'"
     exit 1
   fi
   local curl_args=(
-    --header "cookie: session=${SESSION}"
-    --header "referer: https://adventofcode.com/2024/day/${day}"
+    --header "cookie: session=${AOC_SESSION}"
+    --header "referer: https://adventofcode.com/2024/day/${AOC_DAY}"
     --header "user-agent: AriSweedler AoC CLI"
   )
 
@@ -37,7 +37,7 @@ function api() {
   fi
 
   # Optional args (we have a fallback)
-  : "${output:=$(mktemp /tmp/aoc${YEAR}.XXXXXX)}"
+  : "${output:=$(mktemp /tmp/aoc${AOC_YEAR}.XXXXXX)}"
 
   # Boilerplate args
   curl_args+=(
@@ -60,14 +60,14 @@ function api() {
     --silent
     --output "${output}"
     --write-out "%{http_code}"
-    --url "https://adventofcode.com/${YEAR}/${path}"
+    --url "https://adventofcode.com/${AOC_YEAR}/${path}"
   )
 
   local http_code
   http_code="$(curl "${curl_args[@]}")"
   if (( 200 <= http_code )) && (( http_code < 300 )); then
     log::debug "Curl succeeded | curl_args='${curl_args[*]}'"
-    export OUTPUT="${output}"
+    export API_OUTPUT_FILE="${output}"
     return 0
   fi
   log::err "API request returned non-2xx | http_code='${http_code}'"

@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 
 function main() {
-  YEAR=2024
+  # Get the repo root
   REPO_ROOT="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
+
+  # Source environment
   source "$REPO_ROOT/.env"
+
+  # Set some useful variables
+  AOC_YEAR=2024
+  AOC_0DAY="${AOC_0DAY:-$(date "+%d")}"
+  AOC_DAY="$(printf "%d" "${AOC_0DAY}")"
+  AOC_CDIR="${REPO_ROOT:?}/${AOC_YEAR}/challenges/${AOC_0DAY}"
+  mkdir -p "${AOC_CDIR}"
 
   # Source all shell libraries
   local lib libs
