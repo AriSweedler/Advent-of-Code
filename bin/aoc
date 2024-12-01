@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+function main() {
+  YEAR=2024
+  REPO_ROOT="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
+  source "$REPO_ROOT/.env"
+
+  # Source all shell libraries
+  local lib libs
+  mapfile -t libs < <(find "${REPO_ROOT}/bash_lib" -name "*.bash")
+  for lib in "${libs[@]}"; do
+    source "${lib}"
+  done
+
+  # Dispatch
+  local cmd="command::${1:?}"
+  shift
+  "${cmd}" "$@"
+}
+
+main "$@"
