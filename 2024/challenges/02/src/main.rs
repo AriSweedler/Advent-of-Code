@@ -30,7 +30,7 @@ fn main() {
     }
 
     // For each report, check if it's good (1) or not (0). Sum that up
-    let ans: u32 = reports.iter().map(|report| evaluate_report(report)).sum();
+    let ans: u32 = reports.iter().map(|report| evalute_all_reports(report)).sum();
     println!("{}", ans)
 }
 
@@ -49,6 +49,30 @@ fn process_line(line: &str, reports: &mut Vec<Report>) {
         .collect();
 
     reports.push(parsed_parts);
+}
+
+fn generate_all_reports(report: &Report) -> Vec<Report> {
+    let mut reports = Vec::new();
+
+    // Add the full report (no indices dropped)
+    reports.push(report.clone());
+
+    // Generate reports with one index dropped
+    for i in 0..report.len() {
+        let mut subset = report.clone();
+        subset.remove(i); // Remove the element at index i
+        reports.push(subset);
+    }
+
+    reports
+}
+
+fn evalute_all_reports(report: &Report) -> u32 {
+    if generate_all_reports(report).iter().any(|r| evaluate_report(r) == 1) {
+        1
+    } else {
+        0
+    }
 }
 
 fn evaluate_report(report: &Report) -> u32 {
