@@ -1,7 +1,5 @@
 function command::code() {
-  c::dir "$@"
-
-  cd "${challenge_dir}"
+  cd "${AOC_CDIR}"
   if ! [ -f "Cargo.toml" ]; then
     log::info "Initializing challenge"
     cargo init --name "c${AOC_0DAY}"

@@ -1,5 +1,4 @@
 function command::input() {
-  c::dir "$@"
   local dest="${AOC_CDIR}/input.aoc"
 
   log::info "Getting input for day | day='${AOC_DAY}' dest='${dest#${REPO_ROOT}/}'"
