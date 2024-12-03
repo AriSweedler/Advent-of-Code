@@ -11,6 +11,8 @@ function command::answer() {
     exit 1
   fi
 
+  log::err "${API_OUTPUT_FILE}"
+
   if grep -q "You don't seem to be solving the right level." "${API_OUTPUT_FILE}"; then
     log::info "Wrong level - did you already solve?"
     exit 0
